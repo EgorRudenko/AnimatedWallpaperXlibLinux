@@ -1,3 +1,4 @@
+#define _BSD_SOURCE
 #include <X11/Xlib.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -5,10 +6,11 @@
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
 #include <unistd.h>
+#include <sys/time.h>
 
+#define DELAY_BETWEEN_FRAMES 0 //microseconds
 #define W 1920
 #define H 1080
-
 
 
 Display* display;		//initialize display object
@@ -62,11 +64,12 @@ int main(){
 	if (!gc){printf("gc init problem\n"); return 1;}
 	
 	rereadTheFile:
-	FILE *pipein = popen("ffmpeg -i ~/.start/background/background.mp4 -f image2pipe -vcodec rawvideo -pix_fmt rgb24 -", "r"); 	//open file with this commant (I feel like my comments are really useful)
+	FILE *pipein = popen("ffmpeg -i ~/.start/background/background.mp4 -f image2pipe -vcodec rawvideo -pix_fmt rgb24 -filter:v fps=60  -", "r"); 	//open file with this commant (I feel like my comments are really useful)
 	int count;															//the number of items readfrom file
 
 
-
+	struct timeval startTime, currentTime;
+	gettimeofday(&startTime,NULL);
 	while (1){
 		count = fread(frame, 1, width*height*3, pipein);		//so i read content of pipein into frame
 		if (count != W*H*3) {fflush(pipein);pclose(pipein);goto rereadTheFile;};	//check if the file ended already
@@ -78,6 +81,16 @@ int main(){
 		XKillClient(display, AllTemporary);				//I'm not sure. I don't understand this borind documentation. It just ends connection with xserver?
 		XSetCloseDownMode(display, RetainTemporary);			//I understand it even less
 
+		gettimeofday(&currentTime, NULL);
+		double elapsedTime = 	(currentTime.tv_sec - startTime.tv_sec) * 1000000 +
+                       			(currentTime.tv_usec - startTime.tv_usec);
+		
+		if (elapsedTime < DELAY_BETWEEN_FRAMES){
+			usleep(DELAY_BETWEEN_FRAMES-elapsedTime);
+			
+		}
+		startTime = currentTime;
+
 		setRootAtoms(pixmap);						//I just stole it from hsetroot, there is one little fix, which cost me around 5 hours
 
 
@@ -86,8 +99,6 @@ int main(){
 		
 		XFlush(display);								//something like apply changes
 		XSync(display, False);								//something like the same
-			
-		//sleep(0.05);									//here must be implemented normal timer, but it is slow enought to work even so
 	}
 	
 
