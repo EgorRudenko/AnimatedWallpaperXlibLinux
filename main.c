@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <sys/time.h>
 
-#define DELAY_BETWEEN_FRAMES 0 //microseconds
+#define DELAY_BETWEEN_FRAMES 15000 //microseconds
 #define W 1920
 #define H 1080
 
@@ -26,9 +26,8 @@ XImage* image;			//the template
 unsigned long gcmask = GCBackground | GCForeground;//some shit which defines, how imagemask is applied
 XGCValues values;		//I think... The-e Mask?
 GC gc;				//decides how to apply image
-int toGo;
 
-void generateAnImage(XImage*,int,int,unsigned char [H][W][3]); //a function which generates
+void generateAnImage(char*,int,int,unsigned char [H][W][3], int); //a function which generates
 int setRootAtoms(Pixmap);
 unsigned char frame[H][W][3] = {0};
 
@@ -50,7 +49,7 @@ int main(){
 	dataSize = height*width*depth;					//how many bits are allocated for data part of image. It should be divided by 8. I have no clue, why, but it doesn't work that way (I mean there is not enought allocated memory, but it should be enought, so. Whatever)
 	char* data = (char*)malloc(dataSize);				//allocate that amount of memory
 	
-	image = XCreateImage(display, visual, depth, ZPixmap, 0, data, width, height, 32, 0);	//create image template (it is changable, so I will write it into pixmap later after changes)
+	image = XCreateImage(display, visual, depth, ZPixmap, 0, data, width, height, 8, 0);	//create image template (it is changable, so I will write it into pixmap later after changes)
 	if (!image){printf("image init problem\n"); return 1;}
 
 	pixmap = XCreatePixmap(display, RootWindow(display, screen), width, height, depth);	//create pixmap (I didn't find anything about how to change it directly)
@@ -73,7 +72,7 @@ int main(){
 	while (1){
 		count = fread(frame, 1, width*height*3, pipein);		//so i read content of pipein into frame
 		if (count != W*H*3) {fflush(pipein);pclose(pipein);goto rereadTheFile;};	//check if the file ended already
-		generateAnImage(image, width,height, frame);			//I put infos from frame into image
+		generateAnImage(data, width,height, frame, image->bytes_per_line);			//I put infos from frame into image
 		XPutImage(display, pixmap, gc, image, 0,0,0,0,width,height);	//I put image into pixmap
 
 			
@@ -113,11 +112,15 @@ int main(){
 	return 0;
 }
 
-void generateAnImage(XImage* image, int w, int h, unsigned char frame[H][W][3]){
+void generateAnImage(char* image, int w, int h, unsigned char frame[H][W][3], int bpl){
 	unsigned int pixel;							//pixel color it is coded easy. you write a number as a binary, shift it something to the left, and at the end its like 255 255 255 in one number in binary
 	for (int x = 0; x < W; x++) for (int y = 0; y < H; y++){
-		pixel = (frame[y][x][0]<<16 | frame[y][x][1]<<8 | frame[y][x][2]);	// the shift I described earlier
-		XPutPixel(image, x, y, pixel);						//guess
+		//pixel = (frame[y][x][2]<<24 | frame[y][x][1]<<16 | frame[y][x][0] << 8 | 255);	// the shift I described earlier
+		//pixel = 0xFFFF00FF;	// the shift I described earlier
+		image[y*bpl+x*4] = frame[y][x][2];
+		image[y*bpl+x*4+1] = frame[y][x][1];
+		image[y*bpl+x*4+2] = frame[y][x][0];
+		image[y*bpl+x*4+3] = 255;//guess
 	}
 
 }
