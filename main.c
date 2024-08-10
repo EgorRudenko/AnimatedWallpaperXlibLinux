@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <sys/time.h>
 
-#define DELAY_BETWEEN_FRAMES 37000 //microseconds
+#define DELAY_BETWEEN_FRAMES 15000 //microseconds
 #define W 1920
 #define H 1080
 
@@ -26,7 +26,6 @@ XImage* image;			//the template
 unsigned long gcmask = GCBackground | GCForeground;//some shit which defines, how imagemask is applied
 XGCValues values;		//I think... The-e Mask?
 GC gc;				//decides how to apply image
-int toGo;
 
 void generateAnImage(char*,int,int,unsigned char [H][W][3], int); //a function which generates
 int setRootAtoms(Pixmap);
@@ -64,7 +63,7 @@ int main(){
 	if (!gc){printf("gc init problem\n"); return 1;}
 	
 	rereadTheFile:
-	FILE *pipein = popen("ffmpeg -i ~/.start/background/background.mp4 -f image2pipe -vcodec rawvideo -pix_fmt rgb24 -filter:v fps=30  -", "r"); 	//open file with this commant (I feel like my comments are really useful)
+	FILE *pipein = popen("ffmpeg -i ~/.start/background/background.mp4 -f image2pipe -vcodec rawvideo -pix_fmt rgb24 -filter:v fps=60  -", "r"); 	//open file with this commant (I feel like my comments are really useful)
 	int count;															//the number of items readfrom file
 
 
